@@ -33,18 +33,12 @@ func ParseJSON(filepath string) (Story, error) {
 	return s, nil
 }
 
-func parseFlags() (filename *string, port *int) {
-	filename = flag.String("f", "gopher.json", "a json file containing a story")
+func parseFlags() (storyFile *string, port *int, template *string) {
+	storyFile = flag.String("f", "gopher.json", "a json file containing a story")
 	port = flag.Int("p", 3030, "port on which cyoa is served")
+	template = flag.String("t", "story.tmpl", "template to be used")
 	flag.Parse()
-	return filename, port
-}
-
-func storyHandler(s Story, t *template.Template) http.Handler {
-	if t == nil {
-		t = template.Must(template.ParseFiles("story.tmpl"))
-	}
-	return handler{s, t}
+	return storyFile, port, template
 }
 
 type handler struct {
@@ -59,8 +53,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	path = path[1:]
 	if page, ok := h.s[path]; ok {
-		t := template.Must(template.ParseFiles("story.tmpl"))
-		err := t.Execute(w, page)
+		err := h.t.Execute(w, page)
 		if err != nil {
 			fmt.Println(err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
@@ -70,17 +63,34 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Page Not Found", http.StatusNotFound)
 }
 
-func main() {
-	filename, port := parseFlags()
+type HandlerOption func(h *handler)
 
-	story, err := ParseJSON(*filename)
+func WithTemplate(t *template.Template) HandlerOption {
+	return func(h *handler) {
+		h.t = t
+	}
+}
+
+func storyHandler(s Story, opts ...HandlerOption) http.Handler {
+	t := template.Must(template.ParseFiles("story.tmpl"))
+	h := handler{s, t}
+	for _, opt := range opts {
+		opt(&h)
+	}
+	return h
+}
+
+func main() {
+	storyFile, port, templateFile := parseFlags()
+
+	story, err := ParseJSON(*storyFile)
 	if err != nil {
 		fmt.Println("Error processing source json")
 		panic(err)
 	}
 
 	fmt.Printf("Serving on %d\n", *port)
-	template := template.Must(template.ParseFiles("story.tmpl"))
-	handler := storyHandler(story, template)
+	template := template.Must(template.ParseFiles(*templateFile))
+	handler := storyHandler(story, WithTemplate(template))
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), handler))
 }
