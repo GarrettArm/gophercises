@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"html/template"
+	"log"
+	"net/http"
 	"os"
 )
 
@@ -30,19 +33,39 @@ func ParseJSON(filepath string) (Story, error) {
 	return s, nil
 }
 
-func parseFlags() (filename *string) {
+func parseFlags() (filename *string, port *int) {
 	filename = flag.String("f", "gopher.json", "a json file containing a story")
+	port = flag.Int("p", 3030, "port on which cyoa is served")
 	flag.Parse()
-	return filename
+	return filename, port
+}
+
+func storyHandler(s Story) http.Handler {
+	return handler{s}
+}
+
+type handler struct {
+	s Story
+}
+
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	t := template.Must(template.ParseFiles("story.tmpl"))
+	err := t.ExecuteTemplate(w, "story.tmpl", h.s["intro"])
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
-	filename := parseFlags()
+	filename, port := parseFlags()
+	fmt.Printf("Serving on %d\n", *port)
 	tale, err := ParseJSON(*filename)
 	if err != nil {
 		fmt.Println("Error processing source json")
 		panic(err)
 	}
+	h := storyHandler(tale)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 
-	fmt.Printf("%+v\n", tale)
+	// fmt.Printf("%+v\n", tale)
 }
