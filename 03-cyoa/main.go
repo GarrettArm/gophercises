@@ -17,7 +17,7 @@ type Page struct {
 	} `json:"options"`
 }
 
-func parseJSON(filepath string) Story {
+func ParseJSON(filepath string) Story {
 	var s Story
 	b, err := os.ReadFile(filepath)
 	if err != nil {
@@ -31,7 +31,7 @@ func parseJSON(filepath string) Story {
 }
 
 func main() {
-	tale := parseJSON("gopher.json")
+	tale := ParseJSON("gopher.json")
 
 	fmt.Printf("%+v\n", tale)
 }
