@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-
-	cyoa "github.com/GarrettArm/gophercises/03-cyoa"
 )
 
 type Story map[string]Page
@@ -33,7 +31,6 @@ func ParseJSON(filepath string) (Story, error) {
 }
 
 func main() {
-	cyoa.PrintTrash()
 	tale, err := ParseJSON("gopher.json")
 	if err != nil {
 		fmt.Println("Error processing source json")
