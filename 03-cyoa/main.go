@@ -49,11 +49,21 @@ type handler struct {
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	t := template.Must(template.ParseFiles("story.tmpl"))
-	err := t.ExecuteTemplate(w, "story.tmpl", h.s["intro"])
-	if err != nil {
-		panic(err)
+	path := r.URL.Path
+	if path == "" || path == "/" {
+		path = "/intro"
 	}
+	path = path[1:]
+	if page, ok := h.s[path]; ok {
+		t := template.Must(template.ParseFiles("story.tmpl"))
+		err := t.ExecuteTemplate(w, "story.tmpl", page)
+		if err != nil {
+			fmt.Println(err)
+			http.Error(w, "Server error", http.StatusInternalServerError)
+		}
+		return
+	}
+	http.Error(w, "Page Not Found", http.StatusNotFound)
 }
 
 func main() {
