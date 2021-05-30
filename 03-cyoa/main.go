@@ -40,12 +40,16 @@ func parseFlags() (filename *string, port *int) {
 	return filename, port
 }
 
-func storyHandler(s Story) http.Handler {
-	return handler{s}
+func storyHandler(s Story, t *template.Template) http.Handler {
+	if t == nil {
+		t = template.Must(template.ParseFiles("story.tmpl"))
+	}
+	return handler{s, t}
 }
 
 type handler struct {
 	s Story
+	t *template.Template
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +60,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path = path[1:]
 	if page, ok := h.s[path]; ok {
 		t := template.Must(template.ParseFiles("story.tmpl"))
-		err := t.ExecuteTemplate(w, "story.tmpl", page)
+		err := t.Execute(w, page)
 		if err != nil {
 			fmt.Println(err)
 			http.Error(w, "Server error", http.StatusInternalServerError)
@@ -68,14 +72,15 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	filename, port := parseFlags()
-	fmt.Printf("Serving on %d\n", *port)
-	tale, err := ParseJSON(*filename)
+
+	story, err := ParseJSON(*filename)
 	if err != nil {
 		fmt.Println("Error processing source json")
 		panic(err)
 	}
-	h := storyHandler(tale)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), h))
 
-	// fmt.Printf("%+v\n", tale)
+	fmt.Printf("Serving on %d\n", *port)
+	template := template.Must(template.ParseFiles("story.tmpl"))
+	handler := storyHandler(story, template)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), handler))
 }
