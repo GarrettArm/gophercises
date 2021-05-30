@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"os"
 )
 
 type Story map[string]Page
-
 type Page struct {
 	Title   string   `json:"title"`
 	Story   []string `json:"story"`
@@ -30,8 +30,15 @@ func ParseJSON(filepath string) (Story, error) {
 	return s, nil
 }
 
+func parseFlags() (filename *string) {
+	filename = flag.String("f", "gopher.json", "a json file containing a story")
+	flag.Parse()
+	return filename
+}
+
 func main() {
-	tale, err := ParseJSON("gopher.json")
+	filename := parseFlags()
+	tale, err := ParseJSON(*filename)
 	if err != nil {
 		fmt.Println("Error processing source json")
 		panic(err)
